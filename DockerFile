@@ -1,5 +1,7 @@
 FROM scratch
 
+ENV DEBIAN_FRONTEND noninteractive
+
 ADD base_dependencies/ubuntu-precise-core-cloudimg-amd64-root.tar.gz /
 
 # a few minor docker-specific tweaks
@@ -46,3 +48,18 @@ RUN mkdir -p /run/systemd && echo 'docker' > /run/systemd/container
 
 # overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]
+
+RUN apt-get update
+RUN apt-get install sudo
+
+##Install Java
+RUN apt-get update -y                            
+RUN apt-get install python-software-properties -y 
+RUN add-apt-repository ppa:webupd8team/java -y    
+RUN apt-get update -y 
+RUN echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections                           
+RUN apt-get install oracle-java6-installer -y     
+
+RUN sudo echo "JAVA_HOME=/usr/lib/jvm/java-6-oracle" >> /etc/environment
+RUN source /etc/environment
+
