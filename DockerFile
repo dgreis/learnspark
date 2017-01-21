@@ -1,85 +1,41 @@
-FROM scratch
+FROM dgreis/hadoop:latest
 
-ENV DEBIAN_FRONTEND noninteractive
-
-ADD base_dependencies/ubuntu-precise-core-cloudimg-amd64-root.tar.gz /
-
-# a few minor docker-specific tweaks
-# see https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap
-RUN set -xe \
-	\
-# https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L40-L48
-	&& echo '#!/bin/sh' > /usr/sbin/policy-rc.d \
-	&& echo 'exit 101' >> /usr/sbin/policy-rc.d \
-	&& chmod +x /usr/sbin/policy-rc.d \
-	\
-# https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L54-L56
-	&& dpkg-divert --local --rename --add /sbin/initctl \
-	&& cp -a /usr/sbin/policy-rc.d /sbin/initctl \
-	&& sed -i 's/^exit.*/exit 0/' /sbin/initctl \
-	\
-# https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L71-L78
-	&& echo 'force-unsafe-io' > /etc/dpkg/dpkg.cfg.d/docker-apt-speedup \
-	\
-# https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L85-L105
-	&& echo 'DPkg::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' > /etc/apt/apt.conf.d/docker-clean \
-	&& echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' >> /etc/apt/apt.conf.d/docker-clean \
-	&& echo 'Dir::Cache::pkgcache ""; Dir::Cache::srcpkgcache "";' >> /etc/apt/apt.conf.d/docker-clean \
-	\
-# https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L109-L115
-	&& echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/docker-no-languages \
-	\
-# https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L118-L130
-	&& echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/docker-gzip-indexes \
-	\
-# https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L134-L151
-	&& echo 'Apt::AutoRemove::SuggestsImportant "false";' > /etc/apt/apt.conf.d/docker-autoremove-suggests
-
-# delete all the apt list files since they're big and get stale quickly
-RUN rm -rf /var/lib/apt/lists/*
-# this forces "apt-get update" in dependent images, which is also good
-
-# enable the universe
-RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
-
-# make systemd-detect-virt return "docker"
-# See: https://github.com/systemd/systemd/blob/aa0c34279ee40bce2f9681b496922dedbadfca19/src/basic/virt.c#L434
-RUN mkdir -p /run/systemd && echo 'docker' > /run/systemd/container
-
-# overwrite this with 'CMD []' in a dependent Dockerfile
-CMD ["/bin/bash"]
-
-RUN apt-get update
-RUN apt-get install sudo
-
-##Install Java
-RUN apt-get update -y                            
-RUN apt-get install python-software-properties -y 
-RUN add-apt-repository ppa:webupd8team/java -y    
-RUN apt-get update -y 
-RUN echo debconf shared/accepted-oracle-license-v1-1 select true | debconf-set-selections                           
-RUN apt-get install oracle-java6-installer -y     
-
-ENV JAVA_HOME usr/lib/jvm/java-6-oracle
-
-#Install Scala
-ADD base_dependencies/scala-2.10.6.deb .
-RUN sudo apt-get update
-RUN sudo apt-get install libjansi-java -y
-RUN sudo dpkg -i scala-2.10.6.deb
-
-ENV SCALA_HOME usr/share/java
-
-#sbt
-RUN echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
-RUN sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
-RUN sudo apt-get install apt-transport-https
-RUN sudo apt-get update
-RUN sudo apt-get install sbt -y
+RUN echo 'root:screencast' | chpasswd
+RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 #Spark
-ADD base_dependencies/spark-0.9.2.tgz .
+ADD base_dependencies/spark-2.0.2.tgz .
 #RUN cd spark-0.9.2/
 #RUN sbt/sbt assembly 
+RUN cd spark-2.0.2 && ./build/mvn -Pyarn -Phadoop-2.6 -Dhadoop.version=2.6.0 -DskipTests clean package
 
+#Spark Env Settings
+RUN sed '1d' /etc/hosts > tmpHosts
+RUN cat tmpHosts > /etc/hosts
+RUN rm tmpHosts 
 
+ENV SPARK_MASTER_OPTS="-Dspark.driver.port=7001 -Dspark.fileserver.port=7002 \
+ -Dspark.broadcast.port=7003 -Dspark.replClassServer.port=7004 \
+ -Dspark.blockManager.port=7005 -Dspark.executor.port=7006 \
+ -Dspark.ui.port=4040 \
+ -Dspark.broadcast.factory=org.apache.spark.broadcast.HttpBroadcastFactory"
+ENV SPARK_WORKER_OPTS="-Dspark.driver.port=7001 -Dspark.fileserver.port=7002 \
+ -Dspark.broadcast.port=7003 -Dspark.replClassServer.port=7004 \
+ -Dspark.blockManager.port=7005 -Dspark.executor.port=7006 \
+ -Dspark.ui.port=4040 -Dspark.broadcast.factory=org.apache.spark.broadcast.HttpBroadcastFactory"
+
+ENV SPARK_MASTER_PORT 7077
+ENV SPARK_MASTER_WEBUI_PORT 8080
+ENV SPARK_WORKER_PORT 8888
+ENV SPARK_WORKER_WEBUI_PORT 8081
+
+EXPOSE 8080 7077 8888 8081 4040 7001 7002 7003 7004 7005 7006
+
+#Apache Zeppelin
+ADD ./base_dependencies/zeppelin-0.6.2-bin-all.tgz .
+ENV ZEPPELIN_PORT 5050
+ENV SPARK_HOME /spark-2.0.2
+ENV PYTHONPATH $SPARK_HOME:/usr/bin/python
+ENV PYTHONPATH $SPARK_HOME/python/lib/py4j-0.10.3-src.zip:$PYTHONPATH
+ENV PYTHONPATH $SPARK_HOME/python/build:$PYTHONPATH
+ENV PYTHONPATH $SPARK_HOME/python:$PYTHONPATH
