@@ -47,6 +47,7 @@ if [[ $2 == "-master" ]]; then
   #hadoop fs -put /Volumes/data/*.dat /user/root
   /spark-2.0.2/sbin/start-master.sh
   /zeppelin-0.6.2-bin-all/bin/zeppelin-daemon.sh start
+  /spark-2.0.2/bin/pyspark --packages com.databricks:spark-csv_2.10:1.1.0 --master spark://172.17.0.2:7077 --executor-memory 1024M --driver-memory 1204M
 fi
 
 if [[ $2 == "-slave" ]]; then
@@ -63,10 +64,10 @@ service ssh start
 $HADOOP_PREFIX/sbin/start-dfs.sh
 #$HADOOP_PREFIX/sbin/start-yarn.sh
 
-hadoop dfsadmin -safemode leave
 if [[ $2 == "-master" ]]; then
+  hadoop dfsadmin -safemode leave
 	hadoop fs -mkdir -p /user/root
-  	hadoop fs -put /Volumes/data/*.dat /user/root
+  hadoop fs -put /Volumes/data/*.dat /user/root
 fi
 #hadoop fs -mkdir /user/root
 #hadoop fs -put /Volumes/data/*.dat /user/root
