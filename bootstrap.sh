@@ -47,17 +47,16 @@ if [[ $2 == "-master" ]]; then
   #hadoop fs -put /Volumes/data/*.dat /user/root
   /spark-2.0.2/sbin/start-master.sh
   /zeppelin-0.6.2-bin-all/bin/zeppelin-daemon.sh start
-  /spark-2.0.2/bin/pyspark --packages com.databricks:spark-csv_2.10:1.1.0 --master spark://172.17.0.2:7077 --executor-memory 512M --driver-memory 512M &
+  /spark-2.0.2/bin/pyspark --packages com.databricks:spark-csv_2.10:1.1.0 --master spark://172.17.0.2:7077 &
 fi
 
 if [[ $2 == "-slave" ]]; then
   cp /etc/hosts ~/hosts.new
-  sed -i "s/\t$HOSTNAME/\t$HOSTNAME slave2/" ~/hosts.new
+  sed -i "s/\t$HOSTNAME/\t$HOSTNAME slave$3/" ~/hosts.new
   cp -f ~/hosts.new /etc/hosts
   #service ssh start
-  /spark-2.0.2/sbin/start-slave.sh 172.17.0.2:7077
-  echo "slave2" > /usr/local/hadoop/etc/hadoop/slaves  #Hard-coded for now
-
+  /spark-2.0.2/sbin/start-slave.sh spark://172.17.0.2:7077
+  echo "slave$3" > /usr/local/hadoop/etc/hadoop/slaves
 fi
 
 service ssh start
@@ -67,7 +66,7 @@ $HADOOP_PREFIX/sbin/start-dfs.sh
 if [[ $2 == "-master" ]]; then
   hadoop dfsadmin -safemode leave
 	hadoop fs -mkdir -p /user/root
-  hadoop fs -put /Volumes/data/*.dat /user/root
+  hadoop fs -put /Volumes/data/* /user/root
 fi
 #hadoop fs -mkdir /user/root
 #hadoop fs -put /Volumes/data/*.dat /user/root

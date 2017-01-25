@@ -56,3 +56,5 @@ RUN sudo pip install nose "ipython[notebook]"
 
 ENV PYSPARK_DRIVER_PYTHON ipython
 ENV PYSPARK_DRIVER_PYTHON_OPTS "notebook --no-browser --port=7777 --i 0.0.0.0"
+
+RUN sudo apt-get install vim -y

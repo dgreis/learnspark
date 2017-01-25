@@ -1,6 +1,7 @@
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
+from pyspark.storagelevel import StorageLevel
 import subprocess
 import os
 
@@ -16,15 +17,16 @@ ps = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.ST
 mach_id = ps.communicate()[0].strip()
 
 spark = SparkSession.builder \
-       .master("spark://1c451c55a047:7077") \
-       .appName("Third Word Count") \
+       .master("spark://172.17.0.2:7077") \
+       .appName("DataLoader") \
        .config("spark.some.config.option", "some-value") \
        .getOrCreate()
 
 sc = spark.sparkContext
+sc.setLogLevel("INFO")
 
 # Load a text file and convert each line to a Row.
-lines = sc.textFile("hdfs://"+mach_id+":9000/user/root/movies.dat")
+lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/movies.dat")
 
 parts = lines.map(lambda l: l.split("::"))
 # Each line is converted to a tuple.
@@ -45,20 +47,26 @@ schemaMovies.createOrReplaceTempView("movies")
 ###Ratings
 
 # Load a text file and convert each line to a Row.
-lines = sc.textFile("hdfs://"+mach_id+":9000/user/root/ratings.dat")
+lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/ratings.dat")
 
 parts = lines.map(lambda l: l.split("::"))
 # Each line is converted to a tuple.
-ratings = parts.map(lambda p: (p[0], p[1].strip(), p[2], p[3]))
+ratings = parts.map(lambda p: (p[0], p[1].strip(),int(p[2]), p[3]))
+
+#ratings.cache()
 
 # The schema is encoded in a string.
 schemaString = "user_id movie_id rating timestamp"
 
-fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+#fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+fields = [StructField('user_id', StringType(), True), StructField('movie_id',IntegerType(),True), StructField('rating',IntegerType(),True),\
+         StructField('timestamp',TimestampType(),True)]
 schema = StructType(fields)
 
 # Apply the schema to the RDD.
 schemaRatings = spark.createDataFrame(ratings, schema)
+#schemaRatings.write.saveAsTable("ratings")
+
 
 # Creates a temporary view using the DataFrame
 schemaRatings.createOrReplaceTempView("ratings")
@@ -66,7 +74,7 @@ schemaRatings.createOrReplaceTempView("ratings")
 ###Users
 
 # Load a text file and convert each line to a Row.
-lines = sc.textFile("hdfs://"+mach_id+":9000/user/root/users.dat")
+lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/users.dat")
 
 parts = lines.map(lambda l: l.split("::"))
 # Each line is converted to a tuple.
@@ -84,5 +92,15 @@ schemaUsers = spark.createDataFrame(users, schema)
 
 # Creates a temporary view using the DataFrame
 schemaUsers.createOrReplaceTempView("users")
+
+test_query = spark.sql("""
+SELECT user_id from users
+""")
+
+print("attempt take")
+print(test_query.take(5))
+
+print("now try persist")
+schemaRatings.persist(StorageLevel.MEMORY_AND_DISK)
 
 print("at the end")
