@@ -1,95 +1,84 @@
 from pyspark import SparkContext, SparkConf
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, HiveContext
 from pyspark.sql.types import *
 from pyspark.storagelevel import StorageLevel
 import subprocess
+from datetime import datetime
 import os
 
-spark = SparkSession.builder \
-       .master("spark://172.17.0.2:7077") \
-       .appName("DataLoader") \
-       .config("spark.some.config.option", "some-value") \
-       .getOrCreate()
 
-sc = spark.sparkContext
-sc.setLogLevel("INFO")
+def load_data(spark):
 
-# Load a text file and convert each line to a Row.
-lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/movies.dat")
+    sc = spark.sparkContext
+    sc.setLogLevel("INFO")
 
-parts = lines.map(lambda l: l.split("::"))
-# Each line is converted to a tuple.
-movies = parts.map(lambda p: (p[0], p[1].split('(')[0].strip(), p[1].split('(')[1].strip(')'), p[2]))
+    # Load a text file and convert each line to a Row.
+    lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/movies.dat")
 
-# The schema is encoded in a string.
-schemaString = "movie_id title year genres"
+    parts = lines.map(lambda l: l.split("::"))
+    # Each line is converted to a tuple.
+    movies = parts.map(lambda p: (p[0], p[1].split('(')[0].strip(), p[1].split('(')[1].strip(')'), p[2]))
 
-fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
-schema = StructType(fields)
+    # The schema is encoded in a string.
+    schemaString = "movie_id title year genres"
 
-# Apply the schema to the RDD.
-schemaMovies = spark.createDataFrame(movies, schema)
+    fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+    schema = StructType(fields)
 
-# Creates a temporary view using the DataFrame
-schemaMovies.createOrReplaceTempView("movies")
+    # Apply the schema to the RDD.
+    schemaMovies = spark.createDataFrame(movies, schema)
 
-###Ratings
+    # Creates a temporary view using the DataFrame
+    schemaMovies.createOrReplaceTempView("movies")
 
-# Load a text file and convert each line to a Row.
-lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/ratings.dat")
+    ###Ratings
 
-parts = lines.map(lambda l: l.split("::"))
-# Each line is converted to a tuple.
-ratings = parts.map(lambda p: (p[0], p[1].strip(),int(p[2]), p[3]))
+    # Load a text file and convert each line to a Row.
+    lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/ratings.dat")
 
-#ratings.cache()
+    parts = lines.map(lambda l: l.split("::"))
+    # Each line is converted to a tuple.
+    ratings = parts.map(lambda p: (p[0], p[1].strip(),int(p[2]), datetime.fromtimestamp(int(p[3]))))
 
-# The schema is encoded in a string.
-schemaString = "user_id movie_id rating timestamp"
+    #ratings.cache()
 
-#fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
-fields = [StructField('user_id', StringType(), True), StructField('movie_id',IntegerType(),True), StructField('rating',IntegerType(),True),\
-         StructField('timestamp',TimestampType(),True)]
-schema = StructType(fields)
+    # The schema is encoded in a string.
+    schemaString = "user_id movie_id rating timestamp"
 
-# Apply the schema to the RDD.
-schemaRatings = spark.createDataFrame(ratings, schema)
-#schemaRatings.write.saveAsTable("ratings")
+    #fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+    fields = [StructField('user_id', StringType(), True), StructField('movie_id',IntegerType(),True), StructField('rating',IntegerType(),True),\
+             StructField('timestamp',TimestampType(),True)]
+    schema = StructType(fields)
+
+    # Apply the schema to the RDD.
+    schemaRatings = spark.createDataFrame(ratings, schema)
+    #schemaRatings.write.saveAsTable("ratings")
 
 
-# Creates a temporary view using the DataFrame
-schemaRatings.createOrReplaceTempView("ratings")
+    # Creates a temporary view using the DataFrame
+    schemaRatings.createOrReplaceTempView("ratings")
 
-###Users
+    ###Users
 
-# Load a text file and convert each line to a Row.
-lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/users.dat")
+    # Load a text file and convert each line to a Row.
+    lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/users.dat")
 
-parts = lines.map(lambda l: l.split("::"))
-# Each line is converted to a tuple.
-users = parts.map(lambda p: (p[0], p[1].strip(), p[2], p[3], p[4]))
+    parts = lines.map(lambda l: l.split("::"))
+    # Each line is converted to a tuple.
+    users = parts.map(lambda p: (p[0], p[1].strip(), p[2], p[3], p[4]))
 
 
-# The schema is encoded in a string.
-schemaString = "user_id gender age occupation zip_code"
+    # The schema is encoded in a string.
+    schemaString = "user_id gender age occupation zip_code"
 
-fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
-schema = StructType(fields)
+    fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+    schema = StructType(fields)
 
-# Apply the schema to the RDD.
-schemaUsers = spark.createDataFrame(users, schema)
+    # Apply the schema to the RDD.
+    schemaUsers = spark.createDataFrame(users, schema)
 
-# Creates a temporary view using the DataFrame
-schemaUsers.createOrReplaceTempView("users")
+    # Creates a temporary view using the DataFrame
+    schemaUsers.createOrReplaceTempView("users")
 
-test_query = spark.sql("""
-SELECT user_id from users
-""")
-
-print("attempt take")
-print(test_query.take(5))
-
-print("now try persist")
-schemaRatings.persist(StorageLevel.MEMORY_AND_DISK)
-
-print("at the end")
+    sq = HiveContext(spark)
+    return (sq.table("ratings"),sq.table("users"),sq.table("movies"))
