@@ -47,6 +47,7 @@ if [[ $2 == "-master" ]]; then
   #hadoop fs -put /Volumes/data/*.dat /user/root
   /spark-2.0.2/sbin/start-master.sh
   /zeppelin-0.6.2-bin-all/bin/zeppelin-daemon.sh start
+  rm -rf /usr/local/lib/python2.7/dist-packages/pkg_resources/
   /spark-2.0.2/bin/pyspark --packages com.databricks:spark-csv_2.10:1.1.0 --master spark://172.17.0.2:7077 &
 fi
 
