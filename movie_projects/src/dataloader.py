@@ -5,17 +5,6 @@ from pyspark.storagelevel import StorageLevel
 import subprocess
 import os
 
-#conf = SparkConf().setAppName('appName').setMaster('local')
-#sc = SparkContext(conf=conf)
-
-mach_id = subprocess.check_output(["cat", "/proc/1/cgroup"
-# , "|", "grep", "'docker/'","|" ,"tail" , "-1", "|", "sed", "'s/^.*\///'","|","cut", "-c", "1-12"])
-                           ])
-#mach_id = os.system("cat /proc/1/cgroup | grep 'docker/' | tail -1 | sed 's/^.*\///' | cut -c 1-12")
-cmd = "cat /proc/1/cgroup | grep 'docker/' | tail -1 | sed 's/^.*\///' | cut -c 1-12"
-ps = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-mach_id = ps.communicate()[0].strip()
-
 spark = SparkSession.builder \
        .master("spark://172.17.0.2:7077") \
        .appName("DataLoader") \
