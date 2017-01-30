@@ -2,6 +2,7 @@ from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession, HiveContext
 from pyspark.sql.types import *
 from pyspark.storagelevel import StorageLevel
+import pandas
 import subprocess
 from datetime import datetime
 import os
@@ -38,7 +39,7 @@ def load_data(spark):
 
     parts = lines.map(lambda l: l.split("::"))
     # Each line is converted to a tuple.
-    ratings = parts.map(lambda p: (p[0], p[1].strip(),int(p[2]), datetime.fromtimestamp(int(p[3]))))
+    ratings = parts.map(lambda p: (p[0], int(p[1].strip()),int(p[2]), datetime.fromtimestamp(int(p[3]))))
 
     #ratings.cache()
 
