@@ -1,7 +1,7 @@
 from __future__ import division
 import operator
 import wikipedia as wikipedia
-from wikipedia import DisambiguationError
+from wikipedia.exceptions import DisambiguationError, PageError
 from bs4 import BeautifulSoup
 import os
 import sys
@@ -32,12 +32,12 @@ def extract_plot_paragraphs(soup):
             prime_el = new_el
             continue
         if el_name == 'p':
-            paragraphs.append(new_el.get_text())
+            paragraphs.append(new_el.get_text().strip('\n'))
             prime_el = new_el
         else:
             #print 'not a p. it is a: ' + el_name
             beyond = True
-    return ('\n').join(paragraphs)
+    return (' ').join(paragraphs)
 
 def determine_film_art(results):
     artdict = dict()
@@ -45,6 +45,8 @@ def determine_film_art(results):
         try:
             pg_i = wikipedia.page(r)
         except DisambiguationError:
+            continue
+        except PageError:
             continue
         #num_cats_i = len(pg_i.categories)
         num_film_cats_i = len(filter(lambda x: 'film' in x.lower(), pg_i.categories))
@@ -61,26 +63,30 @@ def load_data(samp_size):
     cwd = os.getcwd()
     parent_dir = cwd.split('learnspark')[0]
     data_dir = parent_dir +'learnspark/movie_projects/base_dependencies/'
-    if os.path.isfile(data_dir + 'plot_summaries.dat'):
-        infile = data_dir + 'plot_summaries.dat'
+    if os.path.isfile(data_dir + 'plots.dat'):
+        infile = data_dir + 'plots.dat'
         df = pd.read_csv(infile, sep='\t')
         finished_movies = df['title'].unique().tolist()
         print "excluding movies: " + (',').join(finished_movies)
+    else:
+        finished_movies = []
     movie_file = data_dir + 'movies.dat'
     movies = process_input(movie_file)
     movies_to_finish = filter(lambda x: x not in finished_movies, movies)
     if samp_size is not None:
-        return movies[0:samp_size]
+        return movies_to_finish[0:samp_size]
     else:
-        return movies
+        return movies_to_finish
 
 def persist_data(df):
     cwd = os.getcwd()
     parent_dir = cwd.split('learnspark')[0]
     data_dir = parent_dir +'learnspark/movie_projects/base_dependencies/'
-    plot_file = data_dir + 'plot_summaries.dat'
+    plot_file = data_dir + 'plots.dat'
     if os.path.isfile(plot_file):
-        dfe = pd.read_csv(infile, sep='\t')
+        dfe = pd.read_csv(plot_file, sep='\t')
+    else:
+        dfe = pd.DataFrame({'title':[],'plot_summary':[]})
     dfe = dfe.append(df)
     dfe.to_csv(plot_file, sep='\t', encoding='utf-8',index=False)
 
@@ -99,21 +105,26 @@ def main():
     except IndexError:
         samp_size = None
     movies = load_data(samp_size)
-    plot_dict = dict()
-    #movies = ["Goldeneye"]
+    #movies = ["Les Miserables"]
     for mov in movies:
-        print mov
+        plot_dict = dict()
+        print "Now processing movie: " + mov
         search_results = search_wikipedia(mov)
-        print search_results
+        #print search_results
         film_art_title = determine_film_art(search_results)
         film_art_page = wikipedia.page(film_art_title)
         soup = BeautifulSoup(film_art_page.html())
         plot_pars = extract_plot_paragraphs(soup)
+        #try:
+        #    plot_pars.decode('utf-8')
+        #    #print "string is UTF-8, length %d bytes" % len(plot_pars)
+        #except UnicodeError:
+        #    #print "string is not UTF-8"
         plot_dict[mov] = plot_pars
-    df = pd.DataFrame.from_dict(plot_dict,orient='index')
-    df = df.reset_index()
-    df.columns = ['title','plot_summary']
-    persist_data(df)
+        df = pd.DataFrame.from_dict(plot_dict,orient='index')
+        df = df.reset_index()
+        df.columns = ['title','plot_summary']
+        persist_data(df)
 
 
 
