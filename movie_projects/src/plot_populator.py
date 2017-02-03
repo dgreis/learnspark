@@ -88,7 +88,7 @@ def persist_data(df):
     else:
         dfe = pd.DataFrame({'title':[],'plot_summary':[]})
     dfe = dfe.append(df)
-    dfe.to_csv(plot_file, sep='\t', encoding='utf-8',index=False)
+    dfe[['title', 'plot_summary']].to_csv(plot_file, sep='\t', encoding='utf-8',index=False)
 
 def process_input(file):
     with open(file) as f:
@@ -121,9 +121,7 @@ def main():
         #except UnicodeError:
         #    #print "string is not UTF-8"
         plot_dict[mov] = plot_pars
-        df = pd.DataFrame.from_dict(plot_dict,orient='index')
-        df = df.reset_index()
-        df.columns = ['title','plot_summary']
+        df = pd.DataFrame({'title':[mov],'plot_summary':[plot_pars]})
         persist_data(df)
 
 
