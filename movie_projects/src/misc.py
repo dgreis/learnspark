@@ -81,5 +81,26 @@ def load_data(spark):
     # Creates a temporary view using the DataFrame
     schemaUsers.createOrReplaceTempView("users")
 
+    #Plots
+
+    # Load a text file and convert each line to a Row.
+    lines = sc.textFile("hdfs://172.17.0.2:54310/user/root/plots.dat")
+
+    parts = lines.map(lambda l: l.split("\t"))
+    # Each line is converted to a tuple.
+    plots = parts.map(lambda p: (p[0], p[1]))
+
+    # The schema is encoded in a string.
+    schemaString = "title plot_summary"
+
+    fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
+    schema = StructType(fields)
+
+    # Apply the schema to the RDD.
+    schemaPlots = spark.createDataFrame(plots, schema)
+
+    # Creates a temporary view using the DataFrame
+    schemaPlots.createOrReplaceTempView("plots")
+
     sq = HiveContext(spark)
-    return (sq.table("ratings"),sq.table("users"),sq.table("movies"))
+    return (sq.table("ratings"),sq.table("users"),sq.table("movies"),sq.table("plots"))
