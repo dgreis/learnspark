@@ -1,5 +1,5 @@
 from pyspark import SparkContext, SparkConf
-from pyspark.sql import SparkSession, HiveContext
+from pyspark.sql import SparkSession, HiveContext, sqlContext
 from pyspark.sql.types import *
 from pyspark.storagelevel import StorageLevel
 import pandas
@@ -39,7 +39,7 @@ def load_data(spark):
 
     parts = lines.map(lambda l: l.split("::"))
     # Each line is converted to a tuple.
-    ratings = parts.map(lambda p: (p[0], int(p[1].strip()),int(p[2]), datetime.fromtimestamp(int(p[3]))))
+    ratings = parts.map(lambda p: (int(p[0]), int(p[1].strip()),int(p[2]), datetime.fromtimestamp(int(p[3]))))
 
     #ratings.cache()
 
@@ -47,7 +47,7 @@ def load_data(spark):
     schemaString = "user_id movie_id rating timestamp"
 
     #fields = [StructField(field_name, StringType(), True) for field_name in schemaString.split()]
-    fields = [StructField('user_id', StringType(), True), StructField('movie_id',IntegerType(),True), StructField('rating',IntegerType(),True),\
+    fields = [StructField('user_id', IntegerType(), True), StructField('movie_id',IntegerType(),True), StructField('rating',IntegerType(),True),\
              StructField('timestamp',TimestampType(),True)]
     schema = StructType(fields)
 
