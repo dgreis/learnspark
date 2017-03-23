@@ -105,10 +105,12 @@ def main():
     except IndexError:
         samp_size = None
     movies = load_data(samp_size)
+    print "Movies left to process: " + str(len(movies))
+    counter = 1
     #movies = ["Les Miserables"]
     for mov in movies:
         plot_dict = dict()
-        print "Now processing movie: " + mov
+        print "Now processing movie: " + mov + " ("+str(counter)+"/"+str(len(movies))+")"
         search_results = search_wikipedia(mov)
         #print search_results
         film_art_title = determine_film_art(search_results)
@@ -123,6 +125,7 @@ def main():
         plot_dict[mov] = plot_pars
         df = pd.DataFrame({'title':[mov],'plot_summary':[plot_pars]})
         persist_data(df)
+        counter += 1
 
 
 
