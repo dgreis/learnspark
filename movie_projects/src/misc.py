@@ -1,5 +1,6 @@
+from __future__ import division
 from pyspark import SparkContext, SparkConf
-from pyspark.sql import SparkSession, HiveContext, sqlContext
+from pyspark.sql import SparkSession, HiveContext
 from pyspark.sql.types import *
 from pyspark.storagelevel import StorageLevel
 import pandas
@@ -104,3 +105,80 @@ def load_data(spark):
 
     sq = HiveContext(spark)
     return (sq.table("ratings"),sq.table("users"),sq.table("movies"),sq.table("plots"))
+
+
+def create_topic_vector(v, tmat, k):
+    idxs = v.indices
+    cnts = v.values
+    idxs_cnts = dict(zip(idxs, cnts))
+    # arr = sV.toArray()
+    # vocab_size = len(arr)
+    ntmat = tmat / tmat.sum(axis=0)
+    # ntmat = tmat
+    ntops = tmat.shape[1]
+    # top_vec = dict([(k,0) for k in range(ntops)])
+    top_vec = dict([(k, 0)])
+    for w in idxs:
+        # for k in range(ntops):
+        multiplier = idxs_cnts[w]
+        weight = ntmat[w, k]
+        val = multiplier * weight
+        top_vec[k] = float(top_vec[k] + val)
+    # r = [list(x) for x in top_vec.items()]
+    r = top_vec[k]
+    return r
+
+
+def UDF_create_topic_vector(k, tmat):
+    return udf(lambda v: create_topic_vector(v, tmat, k), FloatType())
+
+##  Sample Usage
+
+#topic_vectors = X.withColumn('topic_val_0', UDF_create_topic_vector(0,tmat)(col('features')))
+#for k in range(1,num_topics):
+#    topic_vectors = topic_vectors.withColumn('topic_val_'+str(k), UDF_create_topic_vector(k,tmat)(col('features')))
+#topic_cols = [column('topic_val_'+str(k)) for k in range(num_topics)]
+#mv = topic_vectors.select(['title'] + [array(topic_cols).alias("movie_topic_vector")])
+
+def cosine_distance(ui,vi):
+    from pyspark.mllib.linalg import Vectors
+    u = Vectors.dense(ui)
+    v = Vectors.dense(vi)
+    dot = u.dot(v)
+    u_norm = u.norm(2)
+    v_norm = v.norm(2)
+    r = float(dot/(u_norm*v_norm))
+    return r
+
+UDF_cosine_distance = udf(lambda ui,vi: cosine_distance(ui,vi), FloatType())
+
+##  Sample Usage
+#df = df.withColumn('cosine_sim', UDF_cosine_distance(col('user_topic_vector'),col('movie_topic_vector')))
+
+UDF_max_arg = udf(lambda x: x if x > 0 else 0, IntegerType())
+
+##  Sample Usage
+#rj = rj.withColumn('rating_shifted', UDF_max_arg(col('rating_shifted')))
+
+
+def precision_at_k(p,t,k):
+    if len(t) < k:
+        return np.nan
+    else:
+        tks = set(t[:k])
+        #print tks
+        pks = set(p[:k])
+        tp = len(tks.intersection(pks))
+        return tp/k
+
+def UDF_precision_at_k(k):
+    return udf(lambda x,y: precision_at_k(x,y,k), FloatType())
+
+##  Sample Usage
+#k=10
+#user_preds = user_preds.withColumn('bst_precision_at_'+str(k), UDF_precision_at_k(k)(col('collect_list(rank_bst_preds)')
+#                                                                                ,(col('collect_list(rank_ratings)')))
+#                                  )
+#user_preds = user_preds.withColumn('reg_precision_at_'+str(k), UDF_precision_at_k(k)(col('collect_list(rank_reg_preds)')
+#                                                                                ,(col('collect_list(rank_ratings)')))
+#                                  )
