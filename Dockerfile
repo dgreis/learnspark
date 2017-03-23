@@ -4,7 +4,7 @@ RUN echo 'root:screencast' | chpasswd
 RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 #Spark
-ADD base_dependencies/spark-2.0.2.tgz .
+ADD base_dependencies/spark-2.0.2/ /spark-2.0.2
 #RUN cd spark-0.9.2/
 #RUN sbt/sbt assembly 
 RUN cd spark-2.0.2 && ./build/mvn -Pyarn -Phadoop-2.6 -Dhadoop.version=2.6.0 -DskipTests clean package
