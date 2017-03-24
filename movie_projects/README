@@ -1,1 +1,1 @@
-Check ./base_dependencies/dependencies.txt to see what you need before building "movie" Docker image
+Check ./base_dependencies/README.md to see what you need before building "movie" Docker image
