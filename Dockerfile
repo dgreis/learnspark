@@ -4,10 +4,11 @@ RUN echo 'root:screencast' | chpasswd
 RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 
 #Spark
-ADD base_dependencies/spark-2.0.2/ /spark-2.0.2
+#ADD base_dependencies/spark-2.0.2/ /spark-2.0.2
+ADD base_dependencies/spark-2.0.2-bin-hadoop2.6 /spark-2.0.2
 #RUN cd spark-0.9.2/
 #RUN sbt/sbt assembly 
-RUN cd spark-2.0.2 && ./build/mvn -Pyarn -Phadoop-2.6 -Dhadoop.version=2.6.0 -DskipTests clean package
+#RUN cd spark-2.0.2 && ./build/mvn -Pyarn -Phadoop-2.6 -Dhadoop.version=2.6.0 -DskipTests clean package
 
 #Spark Env Settings
 RUN sed '1d' /etc/hosts > tmpHosts
@@ -33,8 +34,8 @@ ENV SPARK_MASTER_HOST 172.17.0.2
 EXPOSE 8080 7077 8888 8081 4040 7001 7002 7003 7004 7005 7006
 
 #Apache Zeppelin
-ADD ./base_dependencies/zeppelin-0.6.2-bin-all.tgz .
-ENV ZEPPELIN_PORT 5050
+#ADD ./base_dependencies/zeppelin-0.6.2-bin-all.tgz .
+#ENV ZEPPELIN_PORT 5050
 ENV SPARK_HOME /spark-2.0.2
 ENV PYTHONPATH $SPARK_HOME:/usr/bin/python
 ENV PYTHONPATH $SPARK_HOME/python/lib/py4j-0.10.3-src.zip:$PYTHONPATH
@@ -55,7 +56,7 @@ RUN pip install --upgrade pip
 RUN sudo pip install nose "ipython[notebook]"
 
 ENV PYSPARK_DRIVER_PYTHON ipython
-ENV PYSPARK_DRIVER_PYTHON_OPTS "notebook --no-browser --port=7777 --i 0.0.0.0"
+ENV PYSPARK_DRIVER_PYTHON_OPTS "notebook --no-browser --port=7777 --i 0.0.0.0 --allow-root"
 
 RUN sudo apt-get install vim -y
 
@@ -63,10 +64,12 @@ RUN rm -rf /usr/lib/python2.7/dist-packages/numpy*
 RUN rm -rf /usr/lib/python2.7/dist-packages/pandas*
 RUN pip install numpy --force-reinstall
 RUN pip install pandas --force-reinstall
-RUN rm -rf /usr/local/lib/python2.7/dist-packages/pkg_resources/
-#RUN wget https://bootstrap.pypa.io/ez_setup.py -O - | python
-RUN curl https://bootstrap.pypa.io/get-pip.py | python
+#RUN rm -rf /usr/local/lib/python2.7/dist-packages/pkg_resources/
+#RUN curl https://bootstrap.pypa.io/get-pip.py | python
 #RUN pip install setuptools --upgrade --no-use-wheel
+#RUN wget https://bootstrap.pypa.io/ez_setup.py -O - | python
+RUN sudo apt-get install -y python-setuptools
+#RUN sudo apt-get install python-pip
 RUN pip install nltk
 RUN python -m nltk.downloader punkt
 RUN python -m nltk.downloader averaged_perceptron_tagger

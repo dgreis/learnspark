@@ -4,4 +4,6 @@ I created a docker-machine with 4GB but it can definitely be run with more memor
 
 `docker-machine create -d virtualbox --virtualbox-memory 4096 --virtualbox-disk-size "40000" default`
 
-I wanted to create my environment almost entirely from scratch (including HDFS to use as file storage), so to build base-spark image first the base-hadoop image has to be built. I built that image using the https://github.com/sequenceiq/docker-hadoop-ubuntu image as a base with a few slight changes. I am going see if I can push my version to Docker Hub (along with the spark image) in the next few days so that it will be easy to pull these from the web. I am realizing now it's too complicated otherwise. Bear with me...
+[dgreis/spark](https://hub.docker.com/r/dgreis/spark/) was built using the Dockerfile in this directory. It is available to pull from Docker Hub—just clieck on the link above. dgreis/spark has [sequenceiq/docker-hadoop-ubuntu](https://github.com/sequenceiq/docker-hadoop-ubuntu) as its base image.
+
+For info on movie projects, look in the `movie_projects` folder
