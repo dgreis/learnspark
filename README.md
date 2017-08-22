@@ -6,4 +6,5 @@ I created a docker-machine with 4GB but it can definitely be run with more memor
 
 [dgreis/spark](https://hub.docker.com/r/dgreis/spark/) was built using the Dockerfile in this directory. It is available to pull from Docker Hub—just clieck on the link above. dgreis/spark has [sequenceiq/docker-hadoop-ubuntu](https://github.com/sequenceiq/docker-hadoop-ubuntu) as its base image.
 
-For info on movie projects, look in the `movie_projects` folder
+For info on movie projects, look in the `movie_projects` folder, but switch to `movie` branch first.
+
