@@ -1,1 +1,1 @@
-Check ./base_dependencies/README.md to see what you need before building "movie" Docker image
+[dgreis/movie](https://hub.docker.com/r/dgreis/movie/), the spark image used to do all the work for the movie projects, is available on Docker Hub. Just click the link above and you can pull it to your machine. Then get going by running the bash script quickstart.sh. Let me know if there are issues.
